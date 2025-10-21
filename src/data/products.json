@@ -44,29 +44,23 @@
   {
     "id": 4,
     "status": true,
-    "title": "Vodka Smirnoff",
-    "description": "Vodka Smirnoff 1l",
-    "code": "SMIRNOFF01",
-    "price": 9500,
-    "stock": 10,
+    "title": "Smirnoff",
+    "description": "Vodka Smirnoff 750ml",
+    "code": "VODK01",
+    "price": 8999,
+    "stock": 12,
     "category": "bebidas.alcohol",
-    "thumbnails": [
-      "ruta1.jpg",
-      "ruta2.jpg"
-    ]
+    "thumbnails": []
   },
   {
     "id": 5,
     "status": true,
     "title": "Pepsi",
-    "description": "Pepsi 1l",
+    "description": "Gaseosa Pepsi 2lt",
     "code": "PEPSI01",
-    "price": 2000,
-    "stock": 15,
+    "price": 2499,
+    "stock": 24,
     "category": "bebidas",
-    "thumbnails": [
-      "ruta1.jpg",
-      "ruta2.jpg"
-    ]
+    "thumbnails": []
   }
 ]
