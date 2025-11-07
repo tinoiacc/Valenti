@@ -1,95 +1,181 @@
+// src/routes/products.router.js
 import { Router } from "express";
+import mongoose from "mongoose";
 import ProductManager from "../DAO/ProductManager.js";
 
 const router = Router();
 const productManager = new ProductManager();
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-// GET 
+// GET /api/products  (con paginación + filtros + formato pedido)
 router.get("/", async (req, res) => {
   try {
-    const products = await productManager.getProducts();
+    let { limit = 10, page = 1, sort, query } = req.query;
+    limit = Number(limit) || 10;
+    page = Number(page) || 1;
 
-   
-    if (products.length === 0) {
-      return res.json({ message: "No hay productos cargados en el sistema." });
+    // Filtro sencillo (tolerante a espacios y mayúsculas):
+    // - query="category:bebidas"  => { category: /^bebidas$/i }
+    // - query="status:true"       => { status: true }
+    // - query="texto"             => { $or: [{title:/texto/i},{description:/texto/i},{category:/texto/i}] }
+    let filter = {};
+    if (query) {
+      const qStr = String(query).trim();
+      const parts = qStr.split(":");
+      if (parts.length === 2) {
+        const k = parts[0].trim().toLowerCase();
+        const v = parts[1].trim();
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        if (k === "status") {
+          filter.status = String(v).toLowerCase() === "true";
+        } else if (k === "category") {
+          // Búsqueda exacta por categoría, case-insensitive
+          filter.category = new RegExp(`^${esc(v)}$`, "i");
+        } else {
+          const rx = new RegExp(esc(qStr), "i");
+          filter = { $or: [{ title: rx }, { description: rx }, { category: rx }] };
+        }
+      } else {
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const rx = new RegExp(esc(qStr), "i");
+        filter = { $or: [{ title: rx }, { description: rx }, { category: rx }] };
+      }
     }
 
-    res.json({
-      message:  `Los productos cargados son (${products.length})`,
-      products: JSON.parse(JSON.stringify(products, null, 2))
+    // Orden por precio
+    let sortOpt;
+    if (sort === "asc") sortOpt = { price: 1 };
+    if (sort === "desc") sortOpt = { price: -1 };
+
+    const result = await productManager.getProducts(filter, {
+      limit,
+      page,
+      sort: sortOpt,
+      lean: true,
     });
-  } catch (error) {
-    res.status(500).json({ error: "Error al obtener los productos: " + error.message });
+
+    const buildLink = (p) =>
+      p
+        ? `/api/products?limit=${limit}&page=${p}${sort ? `&sort=${sort}` : ""}${
+            query ? `&query=${encodeURIComponent(query)}` : ""
+          }`
+        : null;
+
+    return res.json({
+      status: "success",
+      payload: result.docs, // productos de la página actual
+      totalPages: result.totalPages,
+      prevPage: result.prevPage,
+      nextPage: result.nextPage,
+      page: result.page,
+      hasPrevPage: result.hasPrevPage,
+      hasNextPage: result.hasNextPage,
+      prevLink: buildLink(result.hasPrevPage ? result.prevPage : null),
+      nextLink: buildLink(result.hasNextPage ? result.nextPage : null),
+    });
+  } catch (err) {
+    console.error("GET /api/products error:", err);
+    return res.status(500).json({ status: "error", message: err.message });
   }
 });
 
-
-// GET by ID
+// GET /api/products/:pid
 router.get("/:pid", async (req, res) => {
-  const id = parseInt(req.params.pid);
+  const id = req.params.pid;
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ status: "error", message: "Invalid product id" });
+  }
   const product = await productManager.getProductById(id);
-
-  product ? res.json(product) : res.status(404).json({ error: `No hay un producto con el id= ${id} ` });
+  if (!product) {
+    return res.status(404).json({ status: "error", message: `Producto con id ${id} no encontrado` });
+  }
+  return res.json({ status: "success", product });
 });
 
-// POST
+// POST /api/products
 router.post("/", async (req, res) => {
-  const product = req.body;
-
-  if (
-    !product.title ||
-    !product.description ||
-    !product.code ||
-    !product.price ||
-    !product.stock ||
-    !product.category
-  ) {
-    return res.status(400).json({ error: "Faltan campos obligatorios" });
-  }
-
   try {
-    const newProduct = await productManager.addProduct(product);
-
-    res.status(201).json({
-      message: "Producto agregado correctamente :)",
-      product: newProduct
-    });
-  } catch (error) {
-    res.status(500).json({ error: "Error al agregar producto: " + error.message });
-  }
-});
-
-// PUT 
-router.put("/:pid", async (req, res) => {
-  try {
-    const id = parseInt(req.params.pid);
-    const update = req.body;
-
-    const updatedProduct = await productManager.updateProduct(id, update);
-
-    if (updatedProduct) {
-      res.json({
-        message: "Producto actualizado correctamente",
-        product: updatedProduct
-      });
-    } else {
-      res.status(404).json({
-        error: `Producto con id= ${id} NO encontrado`
-      });
+    const data = req.body;
+    const required = ["title", "description", "code", "price", "stock", "category"];
+    for (const f of required) {
+      if (data[f] == null || data[f] === "") {
+        return res.status(400).json({ status: "error", message: `Falta campo obligatorio: ${f}` });
+      }
     }
-  } catch (error) {
-    res.status(500).json({
-      error: "Error al actualizar el producto: " + error.message
+    const newProduct = await productManager.addProduct(data);
+
+    // Emitir actualización a clientes
+    if (req.io) {
+      const list = await productManager.getProducts({}, { limit: 10, page: 1, lean: true });
+      req.io.emit("productsUpdated", list.docs);
+    }
+
+    return res.status(201).json({
+      status: "success",
+      message: "✅ Producto agregado correctamente",
+      product: newProduct,
     });
+  } catch (err) {
+    console.error("POST /api/products error:", err);
+    // código duplicado de 'code' único u otras validaciones
+    return res.status(500).json({ status: "error", message: err.message });
   }
 });
 
-// DELETE 
-router.delete("/:pid", async (req, res) => {
-  const id = parseInt(req.params.pid);
-  const result = await productManager.deleteProduct(id);
+// PUT /api/products/:pid
+router.put("/:pid", async (req, res) => {
+  const id = req.params.pid;
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ status: "error", message: "Invalid product id" });
+  }
+  try {
+    const updated = await productManager.updateProduct(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ status: "error", message: `Producto con id ${id} no encontrado` });
+    }
 
-  result ? res.json({ message: `Producto con el id= ${id} ha sido ELIMINADO ` }) : res.status(404).json({ error: `Producto con id= ${id} NO encontrado` });
+    if (req.io) {
+      const list = await productManager.getProducts({}, { limit: 10, page: 1, lean: true });
+      req.io.emit("productsUpdated", list.docs);
+    }
+
+    return res.json({
+      status: "success",
+      message: `♻️ Producto ${id} actualizado`,
+      product: updated,
+    });
+  } catch (err) {
+    console.error("PUT /api/products/:pid error:", err);
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
+// DELETE /api/products/:pid
+router.delete("/:pid", async (req, res) => {
+  const id = req.params.pid;
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ status: "error", message: "Invalid product id" });
+  }
+  try {
+    const deleted = await productManager.deleteProduct(id);
+    if (!deleted) {
+      return res.status(404).json({ status: "error", message: `Producto con id ${id} no encontrado` });
+    }
+
+    if (req.io) {
+      const list = await productManager.getProducts({}, { limit: 10, page: 1, lean: true });
+      req.io.emit("productsUpdated", list.docs);
+    }
+
+    return res.json({
+      status: "success",
+      message: `🗑️ Producto ${id} eliminado correctamente`,
+      product: deleted,
+    });
+  } catch (err) {
+    console.error("DELETE /api/products/:pid error:", err);
+    return res.status(500).json({ status: "error", message: err.message });
+  }
 });
 
 export default router;

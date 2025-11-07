@@ -1,0 +1,126 @@
+<div style="margin:10px 0">
+  <button type="button" onclick="window.location.href='/'">Volver al inicio</button>
+</div>
+
+<section>
+  <h1>Productos</h1>
+  <h2> Agregar Producto </h2>
+
+<form id="productForm" style="display: flex; flex-direction: column; gap: 10px; max-width: 300px;">
+
+  <label>
+    Título:
+    <input name="title" placeholder="Título" required>
+  </label>
+
+  <label>
+    Descripción:
+    <input name="description" placeholder="Descripción" required>
+  </label>
+
+  <label>
+    Código:
+    <input name="code" placeholder="Código" required>
+  </label>
+
+  <label>
+    Precio:
+    <input name="price" type="number" placeholder="Precio" required>
+  </label>
+
+  <label>
+    Stock:
+    <input name="stock" type="number" placeholder="Stock" required>
+  </label>
+
+  <label>
+    Categoría:
+    <input name="category" placeholder="Categoría" required>
+  </label>
+
+  <button type="submit">Agregar</button>
+
+</form>
+
+  <div>
+    <label> 
+      <h2> Productos Cargados </h2>
+    </label>
+    <label>Categoria: <input id="queryInput" placeholder="ej: bebidas"></label>
+    <label>Ordenar:
+      <select id="sortSelect">
+        <option value=""></option>
+        <option value="asc">Precio Asc</option>
+        <option value="desc">Precio Desc</option>
+      </select>
+    </label>
+    <label>Items por Pagina: <input id="limitInput" type="number" value="10" min="1"></label>
+    <button id="reloadBtn">Cargar</button>
+  </div>
+
+  <table border="1" cellspacing="0" cellpadding="6" width="100%">
+    <thead>
+      <tr>
+        <th>ID</th><th>Título</th><th>Precio</th><th>Stock</th><th>Categoría</th><th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="productsBody"></tbody>
+  </table>
+
+  <div>
+    <button id="prevBtn" disabled>Anterior</button>
+    <span id="pageInfo"></span>
+    <button id="nextBtn" disabled>Siguiente</button>
+  </div>
+
+  <!-- Sección de edición -->
+  <section id="editSection" style="display:none; margin-top: 16px;">
+    <h2>Editar Producto</h2>
+    <form id="editForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; max-width: 900px;">
+      <input type="hidden" id="editProductId">
+
+      <label>
+        Título:
+        <input id="editTitle" name="title" placeholder="Título" required>
+      </label>
+
+      <label>
+        Descripción:
+        <input id="editDescription" name="description" placeholder="Descripción" required>
+      </label>
+
+      <label>
+        Código:
+        <input id="editCode" name="code" placeholder="Código" required>
+      </label>
+
+      <label>
+        Precio:
+        <input id="editPrice" name="price" type="number" placeholder="Precio" required>
+      </label>
+
+      <label>
+        Stock:
+        <input id="editStock" name="stock" type="number" placeholder="Stock" required>
+      </label>
+
+      <label>
+        Categoría:
+        <input id="editCategory" name="category" placeholder="Categoría" required>
+      </label>
+
+      <label style="grid-column: 1 / -1;">
+        Thumbnails (coma-separadas):
+        <input id="editThumbnails" name="thumbnails" placeholder="img1.jpg, img2.jpg">
+      </label>
+
+      <div style="grid-column: 1 / -1; display:flex; gap:10px;">
+        <button type="submit">Guardar cambios</button>
+        <button type="button" id="cancelEditBtn">Cancelar</button>
+      </div>
+    </form>
+  </section>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/products.js"></script>

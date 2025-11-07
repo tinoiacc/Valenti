@@ -1,0 +1,58 @@
+<div style="margin:10px 0">
+  <button type="button" onclick="window.location.href='/'">Volver al inicio</button>
+</div>
+
+<main data-cid="{{cart._id}}">
+  <h1>Carrito: {{cart._id}}</h1>
+
+  <section aria-labelledby="cart-list">
+    <h2 id="cart-list">Productos</h2>
+
+    {{#if cart.products.length}}
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Precio</th>
+            <th>Cantidad</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each cart.products}}
+            <tr data-pid="{{this.product._id}}">
+              <td>{{this.product._id}}</td>
+              <td>{{this.product.title}}</td>
+              <td>${{this.product.price}}</td>
+              <td>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="{{this.quantity}}"
+                  class="qty-input"
+                  aria-label="Cantidad para {{this.product.title}}"
+                >
+              </td>
+              <td>
+                <button class="update-btn" data-pid="{{this.product._id}}">Actualizar</button>
+                <button class="remove-btn" data-pid="{{this.product._id}}">Eliminar</button>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    {{else}}
+      <p>Este carrito no tiene productos.</p>
+    {{/if}}
+
+    <div>
+      <button id="emptyCart">Vaciar carrito</button>
+      <button id="deleteCart" style="margin-left:8px;">Eliminar carrito</button>
+    </div>
+  </section>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/cart.js"></script>

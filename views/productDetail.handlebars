@@ -1,0 +1,26 @@
+<div style="margin:10px 0">
+  <button type="button" onclick="window.location.href='/'">Volver al inicio</button>
+</div>
+
+<section>
+  <h1>{{product.title}}</h1>
+  <p><strong>Precio:</strong> ${{product.price}}</p>
+  <p><strong>Stock:</strong> {{product.stock}}</p>
+  <p><strong>Categoría:</strong> {{product.category}}</p>
+  <p><strong>Código:</strong> {{product.code}}</p>
+  <p><strong>Estado:</strong> {{#if product.status}}Activo{{else}}Inactivo{{/if}}</p>
+  <p><strong>Descripción:</strong><br>{{product.description}}</p>
+
+  {{#if product.thumbnails}}
+    <div style="margin-top:12px">
+      <strong>Imágenes:</strong>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px">
+        {{#each product.thumbnails}}
+          <img src="{{this}}" alt="{{../product.title}}" style="max-width:160px; border:1px solid #eee; padding:4px; border-radius:6px;" />
+        {{/each}}
+      </div>
+    </div>
+  {{/if}}
+
+</section>
+

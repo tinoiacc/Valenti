@@ -1,62 +1,64 @@
-import { promises as fs } from "fs";
+import mongoose from "mongoose";
+import ProductModel from "../models/product.model.js";
+
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 export default class ProductManager {
-  constructor() {
-    this.path = "./src/data/products.json"; 
+  /**
+   * GET con filtros y paginación
+   * @param {Object} filter  Filtro Mongoose
+   * @param {Object} options { limit, page, sort, lean }
+   *   - sort: ej { price: 1 } o { price: -1 }
+   */
+  async getProducts(filter = {}, options = {}) {
+    const { limit = 10, page = 1, sort, lean = true } = options;
+    const opts = { limit, page, sort, lean };
+    return await ProductModel.paginate(filter, opts);
   }
 
-  async getProducts() {
-    try {
-      const data = await fs.readFile(this.path, "utf-8");
-      return JSON.parse(data);
-    } catch {
-      return [];
+  async getProductById(id) {
+    if (!isValidObjectId(id)) return null;
+    return await ProductModel.findById(id).lean();
+  }
+
+  async addProduct(product) {
+    // Normalización mínima 
+    if (product.price != null)  product.price  = Number(product.price);
+    if (product.stock != null)  product.stock  = Number(product.stock);
+    if (!Array.isArray(product.thumbnails)) product.thumbnails = product.thumbnails ? [product.thumbnails] : [];
+
+    // Validación liviana 
+    const required = ["title","description","code","price","stock","category"];
+    for (const f of required) {
+      if (product[f] == null || product[f] === "") {
+        const err = new Error(`Campo obligatorio faltante: ${f}`);
+        err.code = "BAD_BODY";
+        throw err;
+      }
     }
+
+    return await ProductModel.create(product);
   }
 
- async addProduct(product) {
-  const products = await this.getProducts();
-  const newId = products.length > 0 ? products[products.length - 1].id + 1 : 1;
-  const newProduct = { id: newId, status: true, ...product };
+  async updateProduct(id, update) {
+    if (!isValidObjectId(id)) return null;
 
-  products.push(newProduct);
+    const next = { ...update };
+    if ("price" in next) next.price = Number(next.price);
+    if ("stock" in next) next.stock = Number(next.stock);
+    if ("thumbnails" in next && !Array.isArray(next.thumbnails)) {
+      next.thumbnails = next.thumbnails ? [next.thumbnails] : [];
+    }
 
-  const tempPath = `${this.path}.tmp`; 
-  try {
-    await fs.writeFile(tempPath, JSON.stringify(products, null, 2));
-    await fs.rename(tempPath, this.path);
+    // Nunca permitir cambiar el _id
+    delete next._id;
+    delete next.id;
 
-    console.log(`Producto agregado correctamente (id: ${newId})`);
-    return newProduct;
-  } catch (error) {
-    console.error("Error al agregar producto:", error);
-  }
-}
-
-
- async deleteProduct(id) {
-  const products = await this.getProducts();
-  const index = products.findIndex(p => p.id === id);
-
-  if (index === -1) {
-    console.log(`No se encontró el producto con id ${id}`);
-    return;
+    return await ProductModel.findByIdAndUpdate(id, next, { new: true, runValidators: true }).lean();
   }
 
-  products.splice(index, 1);
-
-  const tempPath = `${this.path}.tmp`; // archivo temporal
-
-  try {
-    
-    await fs.writeFile(tempPath, JSON.stringify(products, null, 2));
-
-   
-    await fs.rename(tempPath, this.path);
-
-    console.log(`Producto con id ${id} eliminado correctamente`);
-  } catch (error) {
-    console.error("Error al eliminar producto:", error);
+  async deleteProduct(id) {
+    if (!isValidObjectId(id)) return null;
+    return await ProductModel.findByIdAndDelete(id).lean();
   }
-}
 }

@@ -1,9 +1,73 @@
-<h1>LISTA DE PRODUCTOS</h1>
+﻿<h1>Lista de productos</h1>
 
-<ul>
+<form method="GET" action="/">
+  <label>Cantidad de Productos a mostrar:
+    <input type="number" name="limit" value="{{limit}}" min="1" style="width:80px">
+  </label>
+  <input type="hidden" name="page" value="1">
+  <button type="submit">Aplicar</button>
+</form>
+
+<ul id="productsList">
   {{#each products}}
-    <li><strong>{{this.title}}</strong> - ${{this.price}}</li>
+    <li data-pid="{{this._id}}">
+      <strong>{{this.title}}</strong> - ${{this.price}}
+      <button class="add-to-cart-btn" type="button">Agregar al carrito</button>
+      <a class="view-details-btn" href="/products/{{this._id}}" style="margin-left:8px;">Ver detalles</a>
+    </li>
   {{/each}}
+  {{^products}}
+    <li>No hay productos para mostrar.</li>
+  {{/products}}
 </ul>
 
-<a href="/realtimeproducts">MANIPULAR PRODUCTOS</a>
+<div style="margin:8px 0;">
+  {{#if hasPrevPage}}
+    <a href="/?page={{prevPage}}&limit={{limit}}">Anterior</a>
+  {{else}}
+    <span style="color:#888;">Anterior</span>
+  {{/if}}
+  <span style="margin:0 8px;">Pagina {{page}} / {{totalPages}}</span>
+  {{#if hasNextPage}}
+    <a href="/?page={{nextPage}}&limit={{limit}}">Siguiente</a>
+  {{else}}
+    <span style="color:#888;">Siguiente</span>
+  {{/if}}
+</div>
+
+<p>
+  <a href="/products">MANIPULAR PRODUCTOS</a>
+</p>
+
+<hr>
+
+<section id="carts-section">
+  <h2>Carritos</h2>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <label for="homeCartId">Usar carrito ID:</label>
+    <input id="homeCartId" type="text" placeholder="ObjectId de carrito" style="width:280px">
+    <button id="loadCartBtn" type="button">Cargar</button>
+    <button id="createCartBtn" type="button">Crear carrito nuevo</button>
+    <button id="gotoCartBtn" type="button">Abrir página del carrito</button>
+  </div>
+
+  <div id="cartView" style="margin-top:12px;">
+    <h3>Productos en el carrito</h3>
+    <div id="cartEmptyMsg" style="display:none; color:#666;">El carrito está vacío.</div>
+    <table border="1" cellspacing="0" cellpadding="6" width="100%" style="margin-top:6px;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Título</th>
+          <th>Precio</th>
+          <th>Cantidad</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="cartItemsBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/home.js"></script>
