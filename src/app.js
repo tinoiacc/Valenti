@@ -10,9 +10,12 @@ import cartViewsRouter from "./routes/cart.views.router.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = 8080;
 
 // Health check endpoint
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -42,7 +45,7 @@ app.set("views", VIEWS_PATH);
 
 // Mongoose y MongoDB
 
-mongoose.connect("mongodb+srv://santinovalenti:5MxwhH5lZLN3EFMR@cluster0.kuvbp5a.mongodb.net/?appName=Cluster0")
+mongoose.connect(process.env.MONGODB_URI)
 .then(()=>{
   console.log("Conectado a la base de datos de Mongo Atlas")
 })
